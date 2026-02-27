@@ -1,0 +1,23 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.log
+appsettings.*.json
+!appsettings.Development.json
+
+## Node / Vite
+node_modules/
+dist/
+.vite/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Rider / VS Code
+.idea/
+.vscode/
+*.swp

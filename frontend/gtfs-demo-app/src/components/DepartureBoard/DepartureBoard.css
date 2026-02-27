@@ -1,0 +1,148 @@
+.departure-board {
+  padding: 0;
+  flex: 1;
+}
+
+.departure-board__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #1a1a2e;
+  color: #fff;
+  position: sticky;
+  top: 0;
+}
+
+.departure-board__stop-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.departure-board__updated {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.departure-board__loading,
+.departure-board__error {
+  padding: 16px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.departure-board__error {
+  color: #c00;
+}
+
+.departure-board__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.departure-board__table thead th {
+  background: #f4f4f4;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #666;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.departure-board__filters th {
+  padding: 4px 10px 6px;
+  background: #f4f4f4;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.departure-board__filter-select {
+  width: 100%;
+  font-size: 0.75rem;
+  padding: 3px 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+}
+
+.departure-board__filter-select:focus {
+  outline: none;
+  border-color: #1a1a2e;
+}
+
+.departure-board__table tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.1s;
+}
+
+.departure-board__table tbody tr:hover {
+  background: #fafafa;
+}
+
+.departure-board__table td {
+  padding: 9px 10px;
+  vertical-align: middle;
+}
+
+.departure-board__line {
+  display: inline-block;
+  background: #e2001a;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 2px 7px;
+  border-radius: 4px;
+  min-width: 28px;
+  text-align: center;
+}
+
+.departure-board__headsign {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.departure-board__operator {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.departure-board__time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.departure-board__delay {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.departure-board__delay--ok {
+  color: #2e7d32;
+  background: #e8f5e9;
+}
+
+.departure-board__delay--late {
+  color: #c62828;
+  background: #ffebee;
+}
+
+.departure-board__delay--early {
+  color: #1565c0;
+  background: #e3f2fd;
+}
+
+.departure-board__empty {
+  text-align: center;
+  color: #999;
+  padding: 24px;
+}
