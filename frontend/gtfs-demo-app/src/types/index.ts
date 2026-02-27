@@ -21,6 +21,16 @@ export interface Departure {
   operator?:string
 }
 
+export interface TripStop {
+  stopId: string
+  name: string
+  lat: number
+  lon: number
+  sequence: number
+  /** ISO 8601 */
+  scheduledDeparture: string
+}
+
 export interface VehiclePosition {
   vehicleId: string
   tripId: string

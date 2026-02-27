@@ -5,6 +5,8 @@ import './DepartureBoard.css'
 
 interface Props {
   stop: Stop
+  selectedDeparture?: Departure | null
+  onDepartureSelect?: (dep: Departure) => void
 }
 
 function fmtTime(iso: string) {
@@ -27,7 +29,7 @@ interface Filters {
   direction: string
 }
 
-export function DepartureBoard({ stop }: Props) {
+export function DepartureBoard({ stop, selectedDeparture, onDepartureSelect }: Props) {
   const [departures, setDepartures] = useState<Departure[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -135,12 +137,18 @@ export function DepartureBoard({ stop }: Props) {
           <tbody>
             {filtered.map((dep, i) => {
               const delay = fmtDelay(dep.delaySeconds)
+              const isSelected = selectedDeparture?.tripId === dep.tripId && selectedDeparture?.stopId === dep.stopId
               return (
-                <tr key={`${dep.tripId}-${i}`}>
+                <tr
+                  key={`${dep.tripId}-${i}`}
+                  className={`departure-board__row${isSelected ? ' departure-board__row--selected' : ''}`}
+                  onClick={() => onDepartureSelect?.(dep)}
+                  title="Cliquer pour voir le trajet sur la carte"
+                >
                   <td>
                     <span className="departure-board__line">{dep.routeShortName}</span>
                   </td>
-                   <td className="departure-board__operator">{dep.operator}</td>
+                  <td className="departure-board__operator">{dep.operator}</td>
                   <td className="departure-board__headsign">{dep.headsign}</td>
                   <td className="departure-board__time">{fmtTime(dep.scheduledDeparture)}</td>
                   <td>

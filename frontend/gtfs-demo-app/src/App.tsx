@@ -1,11 +1,29 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { StopSearch } from './components/StopSearch/StopSearch'
 import { DepartureBoard } from './components/DepartureBoard/DepartureBoard'
 import { VehicleMap } from './components/VehicleMap/VehicleMap'
-import type { Stop } from './types'
+import { getTripStops } from './services/api'
+import type { Departure, Stop, TripStop } from './types'
 
 export default function App() {
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null)
+  const [selectedDeparture, setSelectedDeparture] = useState<Departure | null>(null)
+  const [tripStops, setTripStops] = useState<TripStop[]>([])
+
+  // Réinitialise la sélection de départ quand on change d'arrêt
+  function handleStopSelect(stop: Stop) {
+    setSelectedStop(stop)
+    setSelectedDeparture(null)
+    setTripStops([])
+  }
+
+  // Charge les arrêts du trajet à chaque nouveau départ sélectionné
+  useEffect(() => {
+    if (!selectedDeparture) { setTripStops([]); return }
+    getTripStops(selectedDeparture.tripId, selectedDeparture.stopId)
+      .then(setTripStops)
+      .catch(() => setTripStops([]))
+  }, [selectedDeparture])
 
   return (
     <div className="app">
@@ -19,12 +37,18 @@ export default function App() {
 
       <main className="app__main">
         <section className="app__sidebar">
-          <StopSearch onStopSelect={setSelectedStop} />
-          {selectedStop && <DepartureBoard stop={selectedStop} />}
+          <StopSearch onStopSelect={handleStopSelect} />
+          {selectedStop && (
+            <DepartureBoard
+              stop={selectedStop}
+              selectedDeparture={selectedDeparture}
+              onDepartureSelect={setSelectedDeparture}
+            />
+          )}
         </section>
 
         <section className="app__map-section">
-          <VehicleMap selectedStop={selectedStop} />
+          <VehicleMap selectedStop={selectedStop} tripStops={tripStops} />
         </section>
       </main>
     </div>

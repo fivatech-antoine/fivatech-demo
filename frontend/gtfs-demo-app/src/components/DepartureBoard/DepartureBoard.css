@@ -74,13 +74,19 @@
   border-color: #1a1a2e;
 }
 
-.departure-board__table tbody tr {
+.departure-board__row {
   border-bottom: 1px solid #f0f0f0;
   transition: background 0.1s;
+  cursor: pointer;
 }
 
-.departure-board__table tbody tr:hover {
-  background: #fafafa;
+.departure-board__row:hover {
+  background: #f0f4ff;
+}
+
+.departure-board__row--selected {
+  background: #e8eeff;
+  border-left: 3px solid #3a6fd8;
 }
 
 .departure-board__table td {
