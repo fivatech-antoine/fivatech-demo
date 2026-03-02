@@ -30,18 +30,3 @@ export interface TripStop {
   /** ISO 8601 */
   scheduledDeparture: string
 }
-
-export interface VehiclePosition {
-  vehicleId: string
-  tripId: string
-  routeShortName: string
-  latitude: number
-  longitude: number
-  /** Cap en degrés (0 = nord) */
-  bearing?: number
-  /** Vitesse en m/s */
-  speed?: number
-  /** ISO 8601 */
-  timestamp: string
-  currentStatus: string
-}

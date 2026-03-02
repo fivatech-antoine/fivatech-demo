@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { searchStops } from '../../services/api'
 import type { Stop } from '../../types'
 import './StopSearch.css'
@@ -21,10 +21,15 @@ export function StopSearch({ onStopSelect }: Props) {
   const [results, setResults] = useState<Stop[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const skipNextSearch = useRef(false)
 
   const debouncedQuery = useDebounce(query, 400)
 
   useEffect(() => {
+    if (skipNextSearch.current) {
+      skipNextSearch.current = false
+      return
+    }
     if (debouncedQuery.trim().length < 2) {
       setResults([])
       return
@@ -37,6 +42,7 @@ export function StopSearch({ onStopSelect }: Props) {
   }, [debouncedQuery])
 
   const handleSelect = (stop: Stop) => {
+    skipNextSearch.current = true
     setQuery(stop.name)
     setResults([])
     onStopSelect(stop)

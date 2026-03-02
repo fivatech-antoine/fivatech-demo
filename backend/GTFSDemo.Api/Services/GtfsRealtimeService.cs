@@ -1,5 +1,4 @@
 using GTFSDemo.Api.Configuration;
-using GTFSDemo.Api.Models;
 using Google.Protobuf;
 using Microsoft.Extensions.Options;
 using ProtoFeed = GTFSDemo.Api.Protos.FeedMessage;
@@ -22,7 +21,6 @@ public class GtfsRealtimeService(
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(30);
 
     // ── Données temps réel en mémoire ─────────────────────────────────────────
-    private IReadOnlyList<VehiclePosition> _vehiclePositions = [];
     // tripId → délai global en secondes
     private Dictionary<string, int> _tripDelays = [];
 
@@ -54,8 +52,6 @@ public class GtfsRealtimeService(
 
     // ── API publique ──────────────────────────────────────────────────────────
 
-    public IReadOnlyList<VehiclePosition> GetVehiclePositions() => _vehiclePositions;
-
     public int? GetTripDelaySeconds(string tripId) =>
         _tripDelays.TryGetValue(tripId, out var d) ? d : null;
 
@@ -66,12 +62,9 @@ public class GtfsRealtimeService(
         var feed = await FetchFeedAsync(ct);
         if (feed is null) return;
 
-        _vehiclePositions = ParseVehiclePositions(feed);
         _tripDelays = ParseTripDelays(feed);
 
-        logger.LogDebug(
-            "GTFS-RT mis à jour : {Vehicles} véhicules, {Trips} trajets avec données",
-            _vehiclePositions.Count, _tripDelays.Count);
+        logger.LogDebug("GTFS-RT mis à jour : {Trips} trajets avec données", _tripDelays.Count);
     }
 
     private async Task<ProtoFeed?> FetchFeedAsync(CancellationToken ct)
@@ -101,39 +94,6 @@ public class GtfsRealtimeService(
     }
 
     // ── Parsers ───────────────────────────────────────────────────────────────
-
-    private List<VehiclePosition> ParseVehiclePositions(ProtoFeed feed)
-    {
-        var result = new List<VehiclePosition>();
-
-        foreach (var entity in feed.Entity)
-        {
-            if (entity.Vehicle is not { } v) continue;
-            if (v.Position is not { } pos) continue;
-
-            var tripId = v.Trip?.TripId ?? "";
-            var routeShortName = !string.IsNullOrEmpty(tripId)
-                ? staticService.GetRouteShortNameForTrip(tripId)
-                : (v.Trip?.RouteId ?? "");
-
-            result.Add(new VehiclePosition
-            {
-                VehicleId = v.Vehicle?.Id ?? entity.Id,
-                TripId = tripId,
-                RouteShortName = routeShortName,
-                Latitude = pos.Latitude,
-                Longitude = pos.Longitude,
-                Bearing = pos.HasBearing ? pos.Bearing : null,
-                Speed = pos.HasSpeed ? pos.Speed : null,
-                Timestamp = v.HasTimestamp
-                    ? DateTimeOffset.FromUnixTimeSeconds((long)v.Timestamp).UtcDateTime
-                    : DateTime.UtcNow,
-                CurrentStatus = v.CurrentStatus.ToString(),
-            });
-        }
-
-        return result;
-    }
 
     private static Dictionary<string, int> ParseTripDelays(ProtoFeed feed)
     {

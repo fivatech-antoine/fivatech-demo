@@ -1,4 +1,4 @@
-import type { Departure, Stop, TripStop, VehiclePosition } from '../types'
+import type { Departure, Stop, TripStop } from '../types'
 
 const BASE = '/api'
 
@@ -19,9 +19,6 @@ export const getStop = (stopId: string): Promise<Stop> =>
 
 export const getDepartures = (stopId: string, limit = 20): Promise<Departure[]> =>
   fetchJson(`${BASE}/departures/${encodeURIComponent(stopId)}?limit=${limit}`)
-
-export const getVehicles = (): Promise<VehiclePosition[]> =>
-  fetchJson(`${BASE}/vehicles`)
 
 export const getTripStops = (tripId: string, fromStopId: string): Promise<TripStop[]> =>
   fetchJson(`${BASE}/trips/${encodeURIComponent(tripId)}/stops?fromStopId=${encodeURIComponent(fromStopId)}`)

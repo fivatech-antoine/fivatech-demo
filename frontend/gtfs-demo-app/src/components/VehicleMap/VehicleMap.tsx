@@ -1,8 +1,7 @@
 import L from 'leaflet'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet'
-import { getVehicles } from '../../services/api'
-import type { Stop, TripStop, VehiclePosition } from '../../types'
+import type { Stop, TripStop } from '../../types'
 import './VehicleMap.css'
 
 // ── Fix icône Leaflet (problème connu avec Vite) ──────────────────────────────
@@ -16,38 +15,13 @@ L.Icon.Default.mergeOptions({ iconUrl: markerIcon, iconRetinaUrl: markerIcon2x, 
 // Centre Lausanne
 const LAUSANNE: [number, number] = [46.5197, 6.6323]
 
-function makeVehicleIcon(routeShortName: string, bearing?: number) {
-  return L.divIcon({
-    html: `<div class="vehicle-icon" style="transform: rotate(${bearing ?? 0}deg)">
-             <span class="vehicle-icon__label">${routeShortName || '?'}</span>
-           </div>`,
-    className: '',
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-  })
-}
-
 interface Props {
   selectedStop: Stop | null
   tripStops?: TripStop[]
 }
 
 export function VehicleMap({ selectedStop, tripStops = [] }: Props) {
-  const [vehicles, setVehicles] = useState<VehiclePosition[]>([])
-  const [error, setError] = useState<string | null>(null)
   const mapRef = useRef<L.Map | null>(null)
-
-  const refresh = useCallback(() => {
-    getVehicles()
-      .then(data => { setVehicles(data); setError(null) })
-      .catch(() => setError('Impossible de charger les positions véhicules'))
-  }, [])
-
-  useEffect(() => {
-    refresh()
-    const id = setInterval(refresh, 30_000)
-    return () => clearInterval(id)
-  }, [refresh])
 
   // Recentrer la carte sur l'arrêt sélectionné
   useEffect(() => {
@@ -66,8 +40,6 @@ export function VehicleMap({ selectedStop, tripStops = [] }: Props) {
 
   return (
     <div className="vehicle-map">
-      {error && <div className="vehicle-map__error">{error}</div>}
-
       <MapContainer
         center={LAUSANNE}
         zoom={13}
@@ -117,22 +89,6 @@ export function VehicleMap({ selectedStop, tripStops = [] }: Props) {
               {new Date(s.scheduledDeparture).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}
             </Popup>
           </CircleMarker>
-        ))}
-
-        {/* Véhicules */}
-        {vehicles.map(v => (
-          <Marker
-            key={v.vehicleId}
-            position={[v.latitude, v.longitude]}
-            icon={makeVehicleIcon(v.routeShortName, v.bearing)}
-          >
-            <Popup>
-              <strong>Ligne {v.routeShortName}</strong><br />
-              Véhicule : {v.vehicleId}<br />
-              {v.speed != null && <>Vitesse : {Math.round(v.speed * 3.6)} km/h<br /></>}
-              Statut : {v.currentStatus}
-            </Popup>
-          </Marker>
         ))}
       </MapContainer>
     </div>

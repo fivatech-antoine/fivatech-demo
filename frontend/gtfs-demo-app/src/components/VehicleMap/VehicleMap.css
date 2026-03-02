@@ -32,27 +32,3 @@
   text-align: right;
   border-top: 1px solid #e0e0e0;
 }
-
-/* ── Icône véhicule custom ─────────────────────────────────────── */
-.vehicle-icon {
-  width: 36px;
-  height: 36px;
-  background: #e2001a;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
-  transition: transform 0.4s ease;
-}
-
-.vehicle-icon__label {
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.7rem;
-  line-height: 1;
-  /* Contre-rotation pour que le texte reste lisible */
-  display: inline-block;
-  transform: rotate(calc(var(--bearing, 0deg) * -1));
-}

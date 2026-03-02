@@ -29,10 +29,16 @@ export default function App() {
     <div className="app">
       <header className="app__header">
         <h1 className="app__title">
-          <span style={{ color: '#E2725B' }}>fiva</span>
-          <span style={{ color: '#8A9A5B' }}>tech</span>
+          <a href="https://www.fivatech.ch" target="blank">
+            <span style={{ color: '#E2725B' }}>fiva</span>
+            <span style={{ color: '#8A9A5B' }}>tech</span>
+          </a>
         </h1>
         <p className="app__subtitle">Transports en commun en Suisse — Prochains départs par station, retards en temps réel</p>
+        <div className="app__credits">
+          <p>Données : <a href="https://opentransportdata.swiss/fr/" target="blank">Open Transport Data Swiss</a></p>
+          <p>Carte : <a href="https://www.openstreetmap.org" target="blank">OpenStreetMap</a></p>
+        </div>
       </header>
 
       <main className="app__main">
