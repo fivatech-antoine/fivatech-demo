@@ -5,8 +5,9 @@ obj/
 *.suo
 .vs/
 *.log
+appsettings.Development.json
 appsettings.*.json
-!appsettings.Development.json
+!appsettings.json
 
 ## Node / Vite
 node_modules/
