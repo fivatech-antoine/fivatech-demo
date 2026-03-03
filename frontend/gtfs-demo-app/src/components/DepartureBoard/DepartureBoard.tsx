@@ -41,7 +41,7 @@ export function DepartureBoard({ stop, selectedDeparture, onDepartureSelect }: P
 
   const unique = (arr: string[]) => [...new Set(arr)].sort()
   const lignes     = unique(departures.map(d => d.routeShortName))
-  const operators  = unique(departures.map(d => d.operator).filter(Boolean))
+  const operators  = unique(departures.map(d => d.operator).filter((o): o is string => o !== undefined))
   const directions = unique(departures.map(d => d.headsign))
 
   const filtered = departures.filter(d =>
