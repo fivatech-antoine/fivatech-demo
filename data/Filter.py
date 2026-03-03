@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 # Bounding box Suisse Romande
-LON_MIN, LON_MAX = 6.0, 7.5
+LON_MIN, LON_MAX = 6.0, 7.0
 LAT_MIN, LAT_MAX = 46.0, 47.0
 
 SOURCE = "D:\projets\DemoGTFS\GTFS Statique\Source"
