@@ -97,3 +97,11 @@
   padding: 2px 6px;
   border-radius: 4px;
 }
+
+/* ── Responsive mobile ────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Éviter le zoom automatique iOS sur les inputs */
+  .stop-search__input {
+    font-size: 1rem;
+  }
+}

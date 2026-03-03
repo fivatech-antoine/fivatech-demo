@@ -152,3 +152,25 @@
   color: #999;
   padding: 24px;
 }
+
+/* ── Responsive mobile ────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Masquer la colonne Opérateur (2e colonne) */
+  .departure-board__table th:nth-child(2),
+  .departure-board__table td:nth-child(2) {
+    display: none;
+  }
+
+  .departure-board__headsign {
+    max-width: none;
+  }
+
+  .departure-board__table td {
+    padding: 11px 8px;
+  }
+
+  /* Éviter le zoom automatique iOS sur les selects */
+  .departure-board__filter-select {
+    font-size: 1rem;
+  }
+}

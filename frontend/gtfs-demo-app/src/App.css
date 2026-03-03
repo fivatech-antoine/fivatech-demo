@@ -80,4 +80,28 @@ body {
 .app__map-section {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+}
+
+/* ── Responsive mobile ────────────────────────────────────────── */
+@media (max-width: 767px) {
+  :root {
+    --header-h: 52px;
+  }
+
+  .app__subtitle,
+  .app__credits {
+    display: none;
+  }
+
+  .app__main {
+    flex-direction: column;
+  }
+
+  .app__sidebar {
+    width: 100%;
+    flex: 0 0 45dvh;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+  }
 }
