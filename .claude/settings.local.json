@@ -4,7 +4,9 @@
       "Bash(dotnet build:*)",
       "Bash(dotnet run:*)",
       "Bash(npm run dev:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }
