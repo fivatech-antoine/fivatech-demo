@@ -5,17 +5,26 @@ import pandas as pd
 LON_MIN, LON_MAX = 6.0, 7.6
 LAT_MIN, LAT_MAX = 45.8, 47.5
 
-SOURCE = "Source"
-RESULT = "Result"
+SOURCE = "D:\projets\DemoGTFS\GTFS Statique\Source"
+RESULT = "D:\projets\DemoGTFS\GTFS Statique\Result"
 
 os.makedirs(RESULT, exist_ok=True)
 
 print("Chargement stops...")
 stops = pd.read_csv(f"{SOURCE}/stops.txt")
-stops_filtered = stops[
+stops_in_bbox = stops[
     (stops.stop_lon >= LON_MIN) & (stops.stop_lon <= LON_MAX) &
     (stops.stop_lat >= LAT_MIN) & (stops.stop_lat <= LAT_MAX)
 ]
+# Récupère les parent_station référencés par ces stops
+parent_ids = set(stops_in_bbox.parent_station.dropna())
+
+# Stops parents correspondants (peuvent être hors bounding box)
+stops_parents = stops[stops.stop_id.isin(parent_ids)]
+
+# Union des deux
+stops_filtered = pd.concat([stops_in_bbox, stops_parents]).drop_duplicates(subset="stop_id")
+
 stop_ids = set(stops_filtered.stop_id)
 print(f"  {len(stops_filtered)} stops conservés sur {len(stops)}")
 
