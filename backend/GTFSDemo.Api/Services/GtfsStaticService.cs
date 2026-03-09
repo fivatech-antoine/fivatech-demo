@@ -23,14 +23,15 @@ public class GtfsStaticService(
     private readonly OpenTransportDataOptions _options = options.Value;
 
     // ── Index en mémoire ─────────────────────────────────────────────────────
-    private Dictionary<string, StopData> _stops = [];
+    private Dictionary<string, StationData> _stations = [];
     private Dictionary<string, StopData> _allStops = [];          // y compris les quais
     private Dictionary<string, List<string>> _stopsByStation = [];
     private Dictionary<string, AgencyData> _agencies = [];
     private Dictionary<string, RouteData> _routes = [];
     private Dictionary<string, TripData> _trips = [];
-    private Dictionary<string, List<StopTimeData>> _stopTimesByStopId = [];
-    private Dictionary<string, List<StopTimeData>> _stopTimesByTripId = [];
+    private Dictionary<int, StopTimeData> _stopTimes = [];
+    private Dictionary<string, List<int>> _stopTimesByStopId = [];
+    private Dictionary<string, List<int>> _stopTimesByTripId = [];
     private Dictionary<string, CalendarData> _calendars = [];
     private Dictionary<string, List<CalendarDateData>> _calendarDates = [];
 
@@ -45,8 +46,8 @@ public class GtfsStaticService(
             await LoadAsync(cancellationToken);
             IsLoaded = true;
             logger.LogInformation(
-                "GTFS statique chargé : {Stops} stops, {Routes} lignes, {Trips} trajets",
-                _stops.Count, _routes.Count, _trips.Count);
+                "GTFS statique chargé : {Stations} stations, {Stops} stops, {Routes} lignes, {Trips} trajets",
+                _stations.Count, _allStops.Count, _routes.Count, _trips.Count);
         }
         catch (Exception ex)
         {
@@ -58,12 +59,12 @@ public class GtfsStaticService(
 
     // ── API publique ─────────────────────────────────────────────────────────
 
-    public IReadOnlyList<Stop> SearchStops(string query, int limit = 50)
+    public IReadOnlyList<Station> SearchStops(string query, int limit = 50)
     {
         if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
             return [];
 
-        return _stops.Values
+        return _stations.Values
             .Where(s => s.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
             .OrderBy(s => s.Name)
             .Take(limit)
@@ -71,21 +72,27 @@ public class GtfsStaticService(
             .ToList();
     }
 
-    public Stop? GetStop(string stopId) =>
-        _stops.TryGetValue(stopId, out var s) ? ToModel(s) : null;
+    public Station? GetStop(string stopId) =>
+        _stations.TryGetValue(stopId, out var s) ? ToModel(s) : null;
 
     public IReadOnlyList<Departure> GetDepartures(string stopId, int limit = 20)
     {
         List<StopTimeData> stopTimes = new List<StopTimeData>();
         if (_stopTimesByStopId.TryGetValue(stopId, out var times))
         {
-            stopTimes.AddRange(times);
+            foreach (int stId in times)
+            {
+                stopTimes.AddRange(_stopTimes[stId]);
+            }
         }
         foreach (string platformId in _stopsByStation[stopId])
         {
             if (_stopTimesByStopId.TryGetValue(platformId, out var ptTimes))
             {
-                stopTimes.AddRange(ptTimes);
+                foreach (int stId in ptTimes)
+                {
+                    stopTimes.AddRange(_stopTimes[stId]);
+                }
             }
         }
         if (stopTimes.Count == 0)
@@ -100,16 +107,21 @@ public class GtfsStaticService(
             {
                 if (!_trips.TryGetValue(st.TripId, out var trip)) return false;
                 if (!activeServices.Contains(trip.ServiceId)) return false;
-                if (_stopTimesByTripId.TryGetValue(trip.TripId, out var stopsOfTheTrip))
+                if (_stopTimesByTripId.TryGetValue(trip.TripId, out var stopIdsOfTheTrip))
                 {
+                    List<StopTimeData> stopsOfTheTrip = new List<StopTimeData>();
+                    foreach (int id in stopIdsOfTheTrip)
+                    {
+                        stopsOfTheTrip.Add(_stopTimes[id]);
+                    }
                     int maxSequence = stopsOfTheTrip.Max(s => s.StopSequence);
                     StopTimeData? lastStop = stopsOfTheTrip.FirstOrDefault(st => st.StopSequence == maxSequence);
                     if (lastStop != null && _stopsByStation[stopId].Contains(lastStop.StopId))
                         return false;
                 }
                 // Normalise les heures > 24h (services passant minuit)
-                var normalizedTime = NormalizeTime(st.DepartureTime);
-                return normalizedTime >= nowTimeOfDay;
+                //var normalizedTime = NormalizeTime(st.DepartureTime);
+                return st.DepartureTime >= nowTimeOfDay;
             })
             .OrderBy(st => NormalizeTime(st.DepartureTime))
             .Take(limit)
@@ -145,9 +157,14 @@ public class GtfsStaticService(
     /// </summary>
     public IReadOnlyList<TripStop> GetTripRemainingStops(string tripId, string fromStopId)
     {
-        if (!_stopTimesByTripId.TryGetValue(tripId, out var stopTimes))
+        if (!_stopTimesByTripId.TryGetValue(tripId, out var stopTimeIds))
             return [];
-
+        
+        List<StopTimeData> stopTimes = new List<StopTimeData>();
+        foreach (int id in stopTimeIds)
+        {
+            stopTimes.Add(_stopTimes[id]);
+        }
         var sorted = stopTimes.OrderBy(st => st.StopSequence).ToList();
 
         int fromSeq = 0;
@@ -172,11 +189,13 @@ public class GtfsStaticService(
             .Where(st => st.StopSequence >= fromSeq)
             .Select(st =>
             {
-                _allStops.TryGetValue(st.StopId, out var stop);
+                StationData? station = null;
+                if (_allStops.TryGetValue(st.StopId, out var stop))
+                    _stations.TryGetValue(stop.ParentStation, out station);
                 return new TripStop
                 {
                     StopId = st.StopId,
-                    Name = stop?.Name ?? st.StopId,
+                    Name = station?.Name ?? st.StopId,
                     Lat = stop?.Lat ?? 0,
                     Lon = stop?.Lon ?? 0,
                     Sequence = st.StopSequence,
@@ -194,13 +213,13 @@ public class GtfsStaticService(
         using var zipStream = new MemoryStream(zipBytes);
         using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read);
 
-        _stops = ParseStops(archive, out _stopsByStation, out _allStops);
+        _stations = ParseStops(archive, out _stopsByStation, out _allStops);
         _routes = ParseRoutes(archive);
         _agencies = ParseAgencies(archive);
         _trips = ParseTrips(archive);
         _calendars = ParseCalendars(archive);
         _calendarDates = ParseCalendarDates(archive);
-        _stopTimesByStopId = ParseStopTimes(archive, _trips.Keys.ToHashSet(), out _stopTimesByTripId);
+        _stopTimes = ParseStopTimes(archive, _trips.Keys.ToHashSet(), out _stopTimesByStopId, out _stopTimesByTripId);
     }
 
     private async Task<byte[]> DownloadZipAsync(CancellationToken ct)
@@ -325,7 +344,7 @@ public class GtfsStaticService(
         BadDataFound = null,
     };
 
-    private static Dictionary<string, StopData> ParseStops(
+    private static Dictionary<string, StationData> ParseStops(
         ZipArchive archive,
         out Dictionary<string, List<string>> stopsByStation,
         out Dictionary<string, StopData> allStops)
@@ -340,26 +359,26 @@ public class GtfsStaticService(
              .Where(r => !string.IsNullOrEmpty(r.stop_id))
              .ToList();
 
-        // Index complet (parents + quais) pour les lookups de coordonnées
-        foreach (var r in rows)
-            allStops.TryAdd(r.stop_id, new StopData(r.stop_id, r.stop_name, r.stop_lat, r.stop_lon, r.parent_station, r.platform_code));
+        // Index des quais
+        allStops = rows
+            .Where(r => !string.IsNullOrEmpty(r.parent_station))
+            .ToDictionary(
+                r => string.Intern(r.stop_id),
+                r => new StopData(string.Intern(r.stop_id), r.stop_lat, r.stop_lon, (r.parent_station == null)?"":r.parent_station));
 
         // Liste les stations (pas de parent) — utilisé pour la recherche
-        Dictionary<string, StopData> result = rows
+        Dictionary<string, StationData> result = rows
             .Where(r => string.IsNullOrEmpty(r.parent_station))
             .ToDictionary(
-                r => r.stop_id,
-                r => new StopData(r.stop_id, r.stop_name, r.stop_lat, r.stop_lon, r.parent_station, r.platform_code));
+                r => string.Intern(r.stop_id),
+                r => new StationData(string.Intern(r.stop_id), string.Intern(r.stop_name), r.stop_lat, r.stop_lon));
 
         // Initialise la liste des stops par stations
-        stopsByStation = result.ToDictionary(r => r.Value.StopId, r => new List<string>());
+        stopsByStation = result.ToDictionary(r => string.Intern(r.Value.StopId), r => new List<string>());
 
-        foreach(var row in rows)
+        foreach(StopData stopData in allStops.Values)
         {
-            if (!string.IsNullOrEmpty(row.parent_station))
-            {
-                stopsByStation[row.parent_station].Add(row.stop_id);
-            }
+             stopsByStation[stopData.ParentStation].Add(string.Intern(stopData.StopId));
         }
 
         return result;
@@ -388,8 +407,8 @@ public class GtfsStaticService(
         return csv.GetRecords<RouteCsvRow>()
             .Where(r => !string.IsNullOrEmpty(r.route_id))
             .ToDictionary(
-                r => r.route_id,
-                r => new RouteData(r.route_id, r.route_short_name, r.route_long_name, r.agency_id));
+                r => string.Intern(r.route_id),
+                r => new RouteData(string.Intern(r.route_id), r.route_short_name, r.route_long_name, r.agency_id));
     }
 
     private static Dictionary<string, TripData> ParseTrips(ZipArchive archive)
@@ -402,44 +421,50 @@ public class GtfsStaticService(
         return csv.GetRecords<TripCsvRow>()
             .Where(r => !string.IsNullOrEmpty(r.trip_id))
             .ToDictionary(
-                r => r.trip_id,
-                r => new TripData(r.trip_id, r.route_id, r.service_id, r.trip_headsign ?? ""));
+                r => string.Intern(r.trip_id),
+                r => new TripData(string.Intern(r.trip_id), r.route_id, r.service_id, r.trip_headsign ?? ""));
     }
 
-    private static Dictionary<string, List<StopTimeData>> ParseStopTimes(
+    private static Dictionary<int, StopTimeData> ParseStopTimes(
         ZipArchive archive, HashSet<string> validTripIds,
-        out Dictionary<string, List<StopTimeData>> byTrip)
+        out Dictionary<string, List<int>> byStop,
+        out Dictionary<string, List<int>> byTrip)
     {
         using var stream = OpenEntry(archive, "stop_times.txt");
+        byStop = [];
         byTrip = [];
         if (stream is null) return [];
         using var reader = new StreamReader(stream);
         using var csv = new CsvReader(reader, CsvConfig);
 
-        var byStop = new Dictionary<string, List<StopTimeData>>();
+        var result = new Dictionary<int, StopTimeData>();
+        int id = 1;
         foreach (var row in csv.GetRecords<StopTimeCsvRow>())
         {
             if (!validTripIds.Contains(row.trip_id)) continue;
             if (!TryParseGtfsTime(row.departure_time, out var depTime)) continue;
             if (!TryParseGtfsTime(row.arrival_time, out var arrTime)) continue;
 
-            var st = new StopTimeData(row.trip_id, row.stop_id, arrTime, depTime, row.stop_sequence);
+            var st = new StopTimeData(string.Intern(row.trip_id), string.Intern(row.stop_id), arrTime, depTime, row.stop_sequence);
+
+            result.Add(id, st);
 
             if (!byStop.TryGetValue(row.stop_id, out var stopList))
             {
                 stopList = [];
                 byStop[row.stop_id] = stopList;
             }
-            stopList.Add(st);
+            stopList.Add(id);
 
             if (!byTrip.TryGetValue(row.trip_id, out var tripList))
             {
                 tripList = [];
                 byTrip[row.trip_id] = tripList;
             }
-            tripList.Add(st);
+            tripList.Add(id);
+            id++;
         }
-        return byStop;
+        return result;
     }
 
     private static Dictionary<string, CalendarData> ParseCalendars(ZipArchive archive)
@@ -549,18 +574,17 @@ public class GtfsStaticService(
         return date.ToDateTime(TimeOnly.MinValue).Add(gtfsTime);
     }
 
-    private static Stop ToModel(StopData s) => new()
+    private static Station ToModel(StationData s) => new()
     {
         StopId = s.StopId,
         Name = s.Name,
         Lat = s.Lat,
         Lon = s.Lon,
-        PlatformCode = s.PlatformCode,
     };
 
     // ── Records internes ──────────────────────────────────────────────────────
 
-    private sealed record StopData(string StopId, string Name, double Lat, double Lon, string? ParentStation, string? PlatformCode);
+    private sealed record StopData(string StopId, double Lat, double Lon, string ParentStation);
     private sealed record StationData(string StopId, string Name, double Lat, double Lon);
     private sealed record RouteData(string RouteId, string ShortName, string LongName, string AgencyId);
     private sealed record AgencyData(string AgencyId, string Name);
@@ -578,7 +602,6 @@ public class GtfsStaticService(
         public double stop_lat { get; set; }
         public double stop_lon { get; set; }
         public string? parent_station { get; set; }
-        public string? platform_code { get; set; }
     }
 
     private class RouteCsvRow
