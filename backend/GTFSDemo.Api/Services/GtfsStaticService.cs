@@ -208,7 +208,7 @@ public class GtfsStaticService(
         // Cache local 12 h — évite de re-télécharger à chaque restart dev
         var cacheFile = Path.Combine(Path.GetTempPath(), "gtfsdemo_static.zip");
         if (File.Exists(cacheFile) &&
-            File.GetLastWriteTimeUtc(cacheFile) > DateTime.UtcNow.AddHours(-12))
+            File.GetLastWriteTimeUtc(cacheFile) > DateTime.UtcNow.AddMinutes(-10))
         {
             logger.LogInformation("Utilisation du cache local : {File}", cacheFile);
             return await File.ReadAllBytesAsync(cacheFile, ct);

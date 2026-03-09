@@ -23,15 +23,24 @@ parent_ids = set(stops_in_bbox.parent_station.dropna())
 stops_parents = stops[stops.stop_id.isin(parent_ids)]
 
 # Union des deux
-stops_filtered = pd.concat([stops_in_bbox, stops_parents]).drop_duplicates(subset="stop_id")
+stops_prefiltered = pd.concat([stops_in_bbox, stops_parents]).drop_duplicates(subset="stop_id")
 
-stop_ids = set(stops_filtered.stop_id)
-print(f"  {len(stops_filtered)} stops conservés sur {len(stops)}")
+stop_ids = set(stops_prefiltered.stop_id)
+
 
 print("Chargement stop_times (fichier lourd, patience...)...")
 stop_times = pd.read_csv(f"{SOURCE}/stop_times.txt")
-stop_times_filtered = stop_times[stop_times.stop_id.isin(stop_ids)]
-trip_ids = set(stop_times_filtered.trip_id)
+stop_times_prefiltered = stop_times[stop_times.stop_id.isin(stop_ids)]
+trip_ids = set(stop_times_prefiltered.trip_id)
+stop_times_filtered = stop_times[stop_times.trip_id.isin(trip_ids)]
+
+stops_in_trips_ids = set(stop_times_filtered.stop_id)
+stops_in_trips = stops[stops.stop_id.isin(stops_in_trips_ids)]
+
+stops_filtered = pd.concat([stops_prefiltered, stops_in_trips]).drop_duplicates(subset="stop_id")
+
+
+print(f"  {len(stops_filtered)} stops conservés sur {len(stops)}")
 print(f"  {len(stop_times_filtered)} stop_times conservés sur {len(stop_times)}")
 
 print("Chargement trips...")

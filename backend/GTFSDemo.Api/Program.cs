@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using GTFSDemo.Api.Configuration;
 using GTFSDemo.Api.Services;
 
@@ -47,6 +48,17 @@ builder.Services.AddCors(opts =>
               .AllowAnyHeader()
               .AllowAnyMethod()));
 
+// ── Rate Limiting ─────────────────────────────────────────────────────────────
+builder.Services.AddRateLimiter(options =>
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1)
+            })));
+
 // ── Swagger (dev) ─────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -59,7 +71,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("Referrer-Policy", "no-referrer");
+    await next();
+});
+
 app.UseCors();
+app.UseRateLimiter();
 app.MapControllers();
 
 app.Run();
