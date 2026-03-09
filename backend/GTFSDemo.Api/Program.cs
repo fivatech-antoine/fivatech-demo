@@ -43,7 +43,7 @@ builder.Services.AddControllers()
 // ── CORS (React dev server sur :5173) ────────────────────────────────────────
 builder.Services.AddCors(opts =>
     opts.AddDefaultPolicy(policy =>
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://localhost:5173", "https://apidemo.fivatech.ch")
               .AllowAnyHeader()
               .AllowAnyMethod()));
 

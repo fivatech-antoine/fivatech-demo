@@ -34,7 +34,7 @@ export default function App() {
             <span style={{ color: '#8A9A5B' }}>tech</span>
           </a>
         </h1>
-        <p className="app__subtitle">Transports en commun en Suisse — Prochains départs par station, retards en temps réel</p>
+        <p className="app__subtitle">Transports en commun Région lémanique — Prochains départs par station, retards en temps réel</p>
         <div className="app__credits">
           <p>Données : <a href="https://opentransportdata.swiss/fr/" target="blank">Open Transport Data Swiss</a></p>
           <p>Carte : <a href="https://www.openstreetmap.org" target="blank">OpenStreetMap</a></p>
