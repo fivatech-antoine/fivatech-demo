@@ -16,17 +16,8 @@ stops_in_bbox = stops[
     (stops.stop_lon >= LON_MIN) & (stops.stop_lon <= LON_MAX) &
     (stops.stop_lat >= LAT_MIN) & (stops.stop_lat <= LAT_MAX)
 ]
-# Récupère les parent_station référencés par ces stops
-parent_ids = set(stops_in_bbox.parent_station.dropna())
 
-# Stops parents correspondants (peuvent être hors bounding box)
-stops_parents = stops[stops.stop_id.isin(parent_ids)]
-
-# Union des deux
-stops_prefiltered = pd.concat([stops_in_bbox, stops_parents]).drop_duplicates(subset="stop_id")
-
-stop_ids = set(stops_prefiltered.stop_id)
-
+stop_ids = set(stops_in_bbox.stop_id)
 
 print("Chargement stop_times (fichier lourd, patience...)...")
 stop_times = pd.read_csv(f"{SOURCE}/stop_times.txt")
@@ -37,7 +28,16 @@ stop_times_filtered = stop_times[stop_times.trip_id.isin(trip_ids)]
 stops_in_trips_ids = set(stop_times_filtered.stop_id)
 stops_in_trips = stops[stops.stop_id.isin(stops_in_trips_ids)]
 
-stops_filtered = pd.concat([stops_prefiltered, stops_in_trips]).drop_duplicates(subset="stop_id")
+stops_prefiltered = pd.concat([stops_in_bbox, stops_in_trips]).drop_duplicates(subset="stop_id")
+
+# Récupère les parent_station référencés par ces stops
+parent_ids = set(stops_prefiltered.parent_station.dropna())
+
+# Stops parents correspondants (peuvent être hors bounding box)
+stops_parents = stops[stops.stop_id.isin(parent_ids)]
+
+# Union des deux
+stops_filtered = pd.concat([stops_prefiltered, stops_parents]).drop_duplicates(subset="stop_id")
 
 
 print(f"  {len(stops_filtered)} stops conservés sur {len(stops)}")
