@@ -120,7 +120,7 @@ public class GtfsStaticService(
                         return false;
                 }
                 // Normalise les heures > 24h (services passant minuit)
-                //var normalizedTime = NormalizeTime(st.DepartureTime);
+                var normalizedTime = NormalizeTime(st.DepartureTime);
                 return st.DepartureTime >= nowTimeOfDay;
             })
             .OrderBy(st => NormalizeTime(st.DepartureTime))
@@ -227,7 +227,7 @@ public class GtfsStaticService(
         // Cache local 12 h — évite de re-télécharger à chaque restart dev
         var cacheFile = Path.Combine(Path.GetTempPath(), "gtfsdemo_static.zip");
         if (File.Exists(cacheFile) &&
-            File.GetLastWriteTimeUtc(cacheFile) > DateTime.UtcNow.AddMinutes(-10))
+            File.GetLastWriteTimeUtc(cacheFile) > DateTime.UtcNow.AddDays(-10))
         {
             logger.LogInformation("Utilisation du cache local : {File}", cacheFile);
             return await File.ReadAllBytesAsync(cacheFile, ct);

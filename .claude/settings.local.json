@@ -6,7 +6,10 @@
       "Bash(npm run dev:*)",
       "mcp__ide__getDiagnostics",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(dotnet --version)",
+      "Bash(cd /d/git/gtfsdemo && dotnet sln add data/GTFSDemo.Processor/GTFSDemo.Processor.csproj --solution-folder data)",
+      "Bash(cd /d/git/gtfsdemo/data/GTFSDemo.Processor && dotnet add package CsvHelper --version 33.0.1)"
     ]
   }
 }
