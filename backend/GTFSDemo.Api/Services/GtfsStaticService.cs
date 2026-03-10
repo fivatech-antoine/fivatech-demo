@@ -364,7 +364,7 @@ public class GtfsStaticService(
             .Where(r => !string.IsNullOrEmpty(r.parent_station))
             .ToDictionary(
                 r => string.Intern(r.stop_id),
-                r => new StopData(string.Intern(r.stop_id), r.stop_lat, r.stop_lon, (r.parent_station == null)?"":r.parent_station));
+                r => new StopData(string.Intern(r.stop_id), r.stop_lat, r.stop_lon, string.Intern(r.parent_station ?? "")));
 
         // Liste les stations (pas de parent) — utilisé pour la recherche
         Dictionary<string, StationData> result = rows
@@ -378,7 +378,7 @@ public class GtfsStaticService(
 
         foreach(StopData stopData in allStops.Values)
         {
-             stopsByStation[stopData.ParentStation].Add(string.Intern(stopData.StopId));
+             stopsByStation[string.Intern(stopData.ParentStation)].Add(string.Intern(stopData.StopId));
         }
 
         return result;
@@ -393,8 +393,8 @@ public class GtfsStaticService(
         return csv.GetRecords<AgencyCsvRow>()
             .Where(r => !string.IsNullOrEmpty(r.agency_id))
             .ToDictionary(
-                r => r.agency_id,
-                r => new AgencyData(r.agency_id, r.agency_name));
+                r => string.Intern(r.agency_id),
+                r => new AgencyData(string.Intern(r.agency_id), r.agency_name));
     }
 
     private static Dictionary<string, RouteData> ParseRoutes(ZipArchive archive)
@@ -408,7 +408,7 @@ public class GtfsStaticService(
             .Where(r => !string.IsNullOrEmpty(r.route_id))
             .ToDictionary(
                 r => string.Intern(r.route_id),
-                r => new RouteData(string.Intern(r.route_id), r.route_short_name, r.route_long_name, r.agency_id));
+                r => new RouteData(string.Intern(r.route_id), string.Intern(r.route_short_name), string.Intern(r.route_long_name), string.Intern(r.agency_id)));
     }
 
     private static Dictionary<string, TripData> ParseTrips(ZipArchive archive)
@@ -422,7 +422,7 @@ public class GtfsStaticService(
             .Where(r => !string.IsNullOrEmpty(r.trip_id))
             .ToDictionary(
                 r => string.Intern(r.trip_id),
-                r => new TripData(string.Intern(r.trip_id), r.route_id, r.service_id, r.trip_headsign ?? ""));
+                r => new TripData(string.Intern(r.trip_id), string.Intern(r.route_id), r.service_id, r.trip_headsign ?? ""));
     }
 
     private static Dictionary<int, StopTimeData> ParseStopTimes(
