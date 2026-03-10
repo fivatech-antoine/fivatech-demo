@@ -23,6 +23,15 @@ public class GtfsStaticService(
 {
     private readonly OpenTransportDataOptions _options = options.Value;
 
+    // Fuseau horaire des horaires GTFS (agences suisses : Europe/Zurich = CET/CEST).
+    // Utiliser DateTime.UtcNow converti explicitement plutôt que DateTime.Now,
+    // car le serveur de production tourne en UTC.
+    private static readonly TimeZoneInfo NetworkTz =
+        TimeZoneInfo.FindSystemTimeZoneById("Europe/Zurich");
+
+    private static DateTime NowInNetworkTz() =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, NetworkTz);
+
     // Snapshot courant — remplacé atomiquement lors de chaque rechargement
     private volatile DataHolder? _data;
 
@@ -67,11 +76,11 @@ public class GtfsStaticService(
         }
     }
 
-    /// <summary>Délai jusqu'au prochain 03:00 (aujourd'hui si avant 03:00, sinon demain).</summary>
+    /// <summary>Délai jusqu'au prochain 03:00 heure suisse (aujourd'hui si avant 03:00, sinon demain).</summary>
     private static TimeSpan TimeUntilNextReload()
     {
-        var now  = DateTime.Now;
-        var next = DateTime.Today.AddHours(3);
+        var now  = NowInNetworkTz();
+        var next = DateOnly.FromDateTime(now).ToDateTime(new TimeOnly(3, 0));
         if (now >= next) next = next.AddDays(1);
         return next - now;
     }
@@ -121,7 +130,7 @@ public class GtfsStaticService(
         // Comparaison sur DateTime réel pour gérer correctement les départs post-minuit
         // (GTFS stocke 24:30 pour 00:30 le lendemain) : NormalizeTime seul ferait
         // disparaître ces départs avant minuit car 00:30 < 23:50.
-        var cutoff = DateTime.Now.AddMinutes(-1);
+        var cutoff = NowInNetworkTz().AddMinutes(-1);
 
         return stopTimes
             .Where(st =>
@@ -228,7 +237,7 @@ public class GtfsStaticService(
         using var zipStream = new MemoryStream(zipBytes);
         using var archive   = new ZipArchive(zipStream, ZipArchiveMode.Read);
 
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = DateOnly.FromDateTime(NowInNetworkTz());
 
         // Stops, lignes et agences : chargés intégralement (taille raisonnable)
         var (stations, stopsByStation, allStops) = ParseStops(archive);
