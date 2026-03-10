@@ -20,9 +20,8 @@ public class GtfsRealtimeService(
     // 30 s = 2 req/min → bien en dessous du quota de 5 req/min
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(30);
 
-    // ── Données temps réel en mémoire ─────────────────────────────────────────
-    // tripId → délai global en secondes
-    private Dictionary<string, int> _tripDelays = [];
+    // tripId → délai en secondes (swap atomique lors du refresh)
+    private volatile Dictionary<string, int> _tripDelays = [];
 
     // ── BackgroundService ─────────────────────────────────────────────────────
 
@@ -62,9 +61,15 @@ public class GtfsRealtimeService(
         var feed = await FetchFeedAsync(ct);
         if (feed is null) return;
 
-        _tripDelays = ParseTripDelays(feed);
+        int totalEntities   = feed.Entity.Count;
+        int tripUpdateCount = feed.Entity.Count(e => e.TripUpdate != null);
 
-        logger.LogDebug("GTFS-RT mis à jour : {Trips} trajets avec données", _tripDelays.Count);
+        var newDelays = ParseTripDelays(feed);
+        _tripDelays = newDelays;
+
+        logger.LogInformation(
+            "GTFS-RT : {Total} entités, {TU} TripUpdates, {Delays} avec délai",
+            totalEntities, tripUpdateCount, newDelays.Count);
     }
 
     private async Task<ProtoFeed?> FetchFeedAsync(CancellationToken ct)
@@ -76,14 +81,17 @@ public class GtfsRealtimeService(
             // Auth : clé brute avec préfixe Bearer (cf. documentation opentransportdata.swiss)
             request.Headers.Add("Authorization", $"Bearer {_options.ApiKey}");
             request.Headers.Add("User-Agent", "gtfsdemo/1.0");
-            // Compression : réduit la taille d'~90 % selon la doc
-            request.Headers.Add("Accept-Encoding", "gzip, deflate");
+            // Note : Accept-Encoding est géré automatiquement par AutomaticDecompression
+            // sur le client "gtfsrt" — ne pas le redéfinir manuellement.
 
             var client = httpClientFactory.CreateClient("gtfsrt");
             using var response = await client.SendAsync(request, ct);
             response.EnsureSuccessStatusCode();
 
             var bytes = await response.Content.ReadAsByteArrayAsync(ct);
+            logger.LogInformation("GTFS-RT : {Bytes} octets reçus (HTTP {Status})",
+                bytes.Length, (int)response.StatusCode);
+
             return ProtoFeed.Parser.ParseFrom(bytes);
         }
         catch (Exception ex)
@@ -104,20 +112,29 @@ public class GtfsRealtimeService(
             if (entity.TripUpdate is not { } tu) continue;
             if (tu.Trip is not { } trip || string.IsNullOrEmpty(trip.TripId)) continue;
 
+            // Priorité 1 : délai global sur le TripUpdate (rare mais direct)
             if (tu.HasDelay)
             {
                 delays[trip.TripId] = tu.Delay;
                 continue;
             }
 
-            // Délai du premier StopTimeUpdate disponible
-            var firstDelay = tu.StopTimeUpdate
-                .Where(stu => stu.Departure?.HasDelay == true)
-                .Select(stu => (int?)stu.Departure!.Delay)
-                .FirstOrDefault();
+            // Priorité 2 : dernier StopTimeUpdate avec délai (départ ou arrivée).
+            // On prend le DERNIER car la liste est ordonnée par séquence d'arrêt :
+            // le dernier arrêt connu reflète le mieux l'état actuel du train.
+            // On vérifie Departure en priorité, puis Arrival en fallback
+            // (certains fournisseurs ne renseignent que l'arrivée au terminus).
+            int? delay = null;
+            foreach (var stu in tu.StopTimeUpdate)
+            {
+                if (stu.Departure?.HasDelay == true)
+                    delay = stu.Departure.Delay;
+                else if (stu.Arrival?.HasDelay == true)
+                    delay = stu.Arrival.Delay;
+            }
 
-            if (firstDelay.HasValue)
-                delays[trip.TripId] = firstDelay.Value;
+            if (delay.HasValue)
+                delays[trip.TripId] = delay.Value;
         }
 
         return delays;
