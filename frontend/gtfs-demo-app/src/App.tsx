@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { StopSearch } from './components/StopSearch/StopSearch'
 import { DepartureBoard } from './components/DepartureBoard/DepartureBoard'
 import { VehicleMap } from './components/VehicleMap/VehicleMap'
+import { DisclaimerModal } from './components/DisclaimerModal/DisclaimerModal'
 import { getTripStops } from './services/api'
 import type { Departure, Stop, TripStop } from './types'
 
@@ -27,6 +28,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <DisclaimerModal />
       <header className="app__header">
         <h1 className="app__title">
           <a href="https://www.fivatech.ch" target="blank">
